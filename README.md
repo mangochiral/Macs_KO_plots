@@ -6,9 +6,9 @@ Analysis code for Macs Perturb-seq.
 
 ### 1. Ingestion from cellranger outputs
 see
-`basic_preprocessing_macs.py`
-`preprocess_macs.py`
-[src](https://github.com/mangochiral/CRISPRa_Analysis_pipeline.git)
+|-`basic_preprocessing_macs.py`
+  |-`preprocess_macs.py`
+  |-[src/preprocess.py](https://github.com/mangochiral/CRISPRa_Analysis_pipeline.git)
 scripts 
 
 Input files: 
