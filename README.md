@@ -5,8 +5,11 @@ Analysis code for Macs Perturb-seq.
 ## Analysis workflow
 
 ### 1. Ingestion from cellranger outputs
-see `basic_preprocessing_macs.py`
-[add details on key substebs happening in the script]
+see
+`basic_preprocessing_macs.py`
+`preprocess_macs.py`
+[src](https://github.com/mangochiral/CRISPRa_Analysis_pipeline.git)
+scripts 
 
 Input files: 
 - file1: sample_filter_feature_matrix.h5d
