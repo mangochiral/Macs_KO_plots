@@ -9,7 +9,8 @@ see
 ```
 |-basic_preprocessing_macs.py
   |-preprocess_macs.py
-  |-[src/preprocess.py](https://github.com/mangochiral/CRISPRa_Analysis_pipeline.git)
+  |-[src](https://github.com/mangochiral/CRISPRa_Analysis_pipeline.git)
+    |-preprocess.py
 ```
 scripts 
 bash script for slurm job
