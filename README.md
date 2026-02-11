@@ -5,16 +5,16 @@ Analysis code for Macs Perturb-seq.
 ## Analysis workflow
 
 ### 1. Ingestion from cellranger outputs
-see `script_name`
+see `basic_preprocessing_macs.py`
 [add details on key substebs happening in the script]
 
 Input files: 
-- file1: <description> 
+- file1: sample_filter_feature_matrix.h5d
 - file2: <description>
 
 Output files:
-- file1: <description>
-- file2: <description>
+- file1: `<sample_name>_gex_preprocessed.h5ad`
+- file2: `<sample_name>_crispr_preprocessed.h5ad`
 
 ### 2. Guide assignment
 see `script_name` (you can also add subtasks)
