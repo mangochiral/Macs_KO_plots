@@ -5,12 +5,11 @@ Analysis code for Macs Perturb-seq.
 ## Analysis workflow
 
 ### 1. Ingestion from cellranger outputs
-see
+see [src](https://github.com/mangochiral/CRISPRa_Analysis_pipeline.git)
 ```
 |-basic_preprocessing_macs.py
   |-preprocess_macs.py
-  |-[src](https://github.com/mangochiral/CRISPRa_Analysis_pipeline.git)
-    |-preprocess.py
+  |-src/preprocess.py
 ```
 scripts 
 bash script for slurm job
