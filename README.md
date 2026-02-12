@@ -5,16 +5,46 @@ Analysis code for Macs Perturb-seq.
 ## Analysis workflow
 
 ### 1. Ingestion from cellranger outputs
-see `script_name`
-[add details on key substebs happening in the script]
+see [src](https://github.com/mangochiral/CRISPRa_Analysis_pipeline.git)
+```
+|-basic_preprocessing_macs.py
+  |-preprocess_macs.py
+  |-src/preprocess.py
+```
+scripts 
+bash script for slurm job
+```
+#!/bin/bash
+#SBATCH --job-name=preprocessing
+#SBATCH --time=1:00:00
+#SBATCH --mem=100G
+#SBATCH --cpus-per-task=16         # <-- 16 CPUs per job
+#SBATCH --output=logs/preprocess_%A_%a.out
+#SBATCH --error=logs/preprocess_%A_%a.err
+
+
+# Use single-threaded BLAS per process (safer with multiprocessing)
+export OMP_NUM_THREADS=1
+#export MKL_NUM_THREADS=1
+#export OPENBLAS_NUM_THREADS=1
+#export NUMEXPR_NUM_THREADS=1
+
+# Run the guide assignment
+python3 basic_preprocessing_macs.py  --datadir "/groups/marson/projects/macs_perturbseq/macs_perturbseq_pilot" \
+  --nprocs "${SLURM_CPUS_PER_TASK}"   --output_dir  /groups/marson/chandrima/new_macs_perturb_analysis --exp_info experiment_info.csv --exp 'crispr'
+echo "Completed!"
+
+````
 
 Input files: 
-- file1: <description> 
-- file2: <description>
-
+The experiment_info.csv has sample info about condition, lane, donor, treatment, etc
+sample_filter_feature_matrix.h5d is cellranger output
+- file1: sample_filter_feature_matrix.h5d
+- file2: experiment_info.csv
+  
 Output files:
-- file1: <description>
-- file2: <description>
+- file1: `<sample_name>_gex_preprocessed.h5ad`
+- file2: `<sample_name>_crispr_preprocessed.h5ad`
 
 ### 2. Guide assignment
 see `script_name` (you can also add subtasks)
