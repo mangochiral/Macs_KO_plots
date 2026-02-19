@@ -92,3 +92,19 @@ Output files:
 
 #### 6.3 DESeq2 test
 
+#### 6. Plots of DE analysis results
+
+See `DE_results_plot.ipynb` - plots of differential expression analysis results and comparison between effects estimated from singlets and multiplets
+
+Input files: 
+- `DE_Mac_Ctrl_anndata.h5ad`: DESeq2 results for Ctrl condition
+- `DE_Mac_LPS_anndata.h5ad`: DESeq2 results for LPS condition
+- `metadata/mac_target_gene_list.xlsx`: table of genes of interest
+
+Output files:
+- `results/DE_t_on_GenesOI_multiplets.t_vs_other.csv`: effects of perturbations on expression of genes of interest, estimated from all cells (testing for cells with each perturbed gene vs rest of cells)
+- `results/DE_t_on_TNF.t_vs_singleNTC.csv`: effects of perturbations on TNF expression (testing for cells with each perturbed gene vs cells with single NTC guide)
+
+
+
+
