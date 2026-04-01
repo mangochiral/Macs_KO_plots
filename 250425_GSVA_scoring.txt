@@ -1,0 +1,182 @@
+##250425
+##for each sample, calculate the gene set score
+##from GSEA of DEGs, select these gene sets
+##GO:0002181	cytoplasmic translation
+##HALLMARK_INTERFERON_GAMMA_RESPONSE
+##HALLMARK_APOPTOSIS
+##GO:0034097	response to cytokine
+##GO:0016477	cell migration
+##GO:0005764	lysosome
+##GO:0001775	cell activation
+##HALLMARK_CHOLESTEROL_HOMEOSTASIS
+##GO:0035295	tube development
+##HALLMARK_COMPLEMENT
+##GO:0002684	positive regulation of immune system process
+##GO:0006909	phagocytosis
+##GO:0045087	innate immune response
+##HALLMARK_TNFA_SIGNALING_VIA_NFKB
+##GO:0032943	mononuclear cell proliferation
+##GO:0050900	leukocyte migration
+##GO:0050851	antigen receptor-mediated signaling pathway
+##GO:0008360	regulation of cell shape
+##GO:0010506	regulation of autophagy
+##GO:0015629	actin cytoskeleton
+##GO:0042060	wound healing
+##HALLMARK_P53_PATHWAY
+##HALLMARK_INTERFERON_ALPHA_RESPONSE
+
+##reference:https://alexslemonade.github.io/refinebio-examples/03-rnaseq/pathway-analysis_rnaseq_03_gsva.html
+
+module load math  fftw/3.3.10
+
+##
+
+wd="/oak/stanford/groups/pritch/users/mineto/workstation/250425_Hyuncheol"
+setwd(wd)
+normcount<-read.table("data/DESeq2_varianceStabalizedTransformedData.txt", header=T, stringsAsFactor=F)
+
+hallmark_gene_sets <- msigdbr::msigdbr(
+  species = "Homo sapiens", # Can change this to what species you need
+  collection = "H" # Only hallmark gene sets
+)
+
+hallmarks_list <- split(
+  hallmark_gene_sets$ncbi_gene, # The genes we want split into pathways
+  hallmark_gene_sets$gs_name # The pathways made as the higher levels of the list
+)
+
+hallmark_selected<-hallmarks_list[c("HALLMARK_INTERFERON_GAMMA_RESPONSE", "HALLMARK_APOPTOSIS", "HALLMARK_CHOLESTEROL_HOMEOSTASIS", "HALLMARK_COMPLEMENT", "HALLMARK_TNFA_SIGNALING_VIA_NFKB",
+ "HALLMARK_P53_PATHWAY", "HALLMARK_INTERFERON_ALPHA_RESPONSE")]
+##
+
+library(org.Hs.eg.db)
+go_genesets <- AnnotationDbi::select(org.Hs.eg.db, keytype="GOALL", keys=c("GO:0002181", "GO:0034097", "GO:0016477",
+ "GO:0005764", "GO:0001775", "GO:0035295", "GO:0002684", "GO:0006909", "GO:0045087", "GO:0032943", "GO:0050900",
+ "GO:0050851", "GO:0008360", "GO:0010506",
+ "GO:0015629", "GO:0042060"), columns="ONTOLOGY")
+
+go_selected<-split(
+  go_genesets$ENTREZID, # The genes we want split into pathways
+  go_genesets$GOALL # The pathways made as the higher levels of the list
+)
+
+# First let's create a mapped data frame we can join to the gene expression values
+library(dplyr)
+
+mapped_df <- data.frame(
+  "entrez_id" = mapIds(
+    # Replace with annotation package for the organism relevant to your data
+    org.Hs.eg.db,
+    keys = normcount$ensembl_id,
+    # Replace with the type of gene identifiers in your data
+    keytype = "ENSEMBL",
+    # Replace with the type of gene identifiers you would like to map to
+    column = "ENTREZID",
+    # This will keep only the first mapped value for each Ensembl ID
+    multiVals = "first"
+  )
+) %>%
+  # If an Ensembl gene identifier doesn't map to a Entrez gene identifier,
+  # drop that from the data frame
+  dplyr::filter(!is.na(entrez_id)) %>%
+  # Make an `Ensembl` column to store the row names
+  tibble::rownames_to_column("Ensembl") %>%
+  # Now let's join the rest of the expression data
+  dplyr::inner_join(normcount, by = c("Ensembl" = "ensembl_id"))
+
+
+# First let's determine the gene means
+gene_means <- rowMeans(mapped_df %>% dplyr::select(-Ensembl, -entrez_id))
+
+# Let's add this as a column in our `mapped_df`.
+mapped_df <- mapped_df %>%
+  # Add gene_means as a column called gene_means
+  dplyr::mutate(gene_means) %>%
+  # Reorder the columns so `gene_means` column is upfront
+  dplyr::select(Ensembl, entrez_id, gene_means, dplyr::everything())
+
+filtered_mapped_df <- mapped_df %>%
+  # Sort so that the highest mean expression values are at the top
+  dplyr::arrange(dplyr::desc(gene_means)) %>%
+  # Filter out the duplicated rows using `dplyr::distinct()`
+  dplyr::distinct(entrez_id, .keep_all = TRUE)
+
+  filtered_mapped_matrix <- filtered_mapped_df %>%
+  # GSVA can't the Ensembl IDs so we should drop this column as well as the means
+  dplyr::select(-Ensembl, -gene_means) %>%
+  # We need to store our gene identifiers as row names
+  tibble::column_to_rownames("entrez_id") %>%
+  # Now we can convert our object into a matrix
+  as.matrix()
+
+##
+
+selected_all=c(hallmark_selected, go_selected)
+
+library(GSVA)
+gsva_results <- gsva(
+  filtered_mapped_matrix,
+  selected_all,
+  method = "gsva",
+  kcdf = "Gaussian",
+  # Minimum gene set size
+  min.sz = 15,
+  # Maximum gene set size
+  max.sz = 2000,
+  # Compute Gaussian-distributed scores
+  mx.diff = TRUE,
+  # Don't print out the progress bar
+  verbose = FALSE
+)
+
+##
+dir.create("GSVA", showWarnings=F)
+write.table(data.frame(PATHWAY=row.names(gsva_results), gsva_results), "GSVA/GSVA_score_sum.txt", row.names=F, sep="\t", quote=F)
+
+##
+
+gsva_results_f<-gsva_results[,grep("NTD.D1|NTD.D7|Nuc.AAV.D1|Nuc.AAV.D7|EDV.AAV.D1|EDV.AAV.D7", colnames(gsva_results))]
+
+GO_corresp<-read.table("GO_corresp.txt", sep="\t", header=F, stringsAsFactor=F)
+
+for(i in 1:nrow(gsva_results_f)){
+A<-row.names(gsva_results_f)[i]
+B<-GO_corresp[is.element(GO_corresp[,1], A), 2]
+if(length(B)>0){
+row.names(gsva_results_f)[i]<-B
+}
+}
+
+
+pathway_heatmap <- pheatmap::pheatmap(gsva_results_f,
+  show_colnames = TRUE,
+  fontsize_row = 6,
+  scale="row" # Shrink the pathway labels a tad
+)
+
+pdf("GSVA/pathway_heatmap.pdf", width=8, height=8)
+pathway_heatmap
+dev.off()
+
+
+
+##
+vi GO_corresp.txt
+``
+GO:0002181	cytoplasmic translation
+GO:0034097	response to cytokine
+GO:0016477	cell migration
+GO:0005764	lysosome
+GO:0001775	cell activation
+GO:0035295	tube development
+GO:0002684	positive regulation of immune system process
+GO:0006909	phagocytosis
+GO:0045087	innate immune response
+GO:0032943	mononuclear cell proliferation
+GO:0050900	leukocyte migration
+GO:0050851	antigen receptor-mediated signaling pathway
+GO:0008360	regulation of cell shape
+GO:0010506	regulation of autophagy
+GO:0015629	actin cytoskeleton
+GO:0042060	wound healing
+``
