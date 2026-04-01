@@ -1,0 +1,71 @@
+##250429
+##scatter plot, nuc vs EDV, gene or GO level.
+
+wd="/oak/stanford/groups/pritch/users/mineto/workstation/250425_Hyuncheol"
+setwd(wd)
+
+edv_mo<-read.table("data/NTD_None_D1_monocyte-vs-EDV_AAVS1_D1_monocyte.txt", header=T, stringsAsFactor=F)
+nuc_mo<-read.table("data/NTD_None_D1_monocyte-vs-Nuc_AAVS1_D1_monocyte.txt", header=T, stringsAsFactor=F)
+
+colnames(edv_mo)[-1]<-paste0("edv_", colnames(edv_mo)[-1])
+colnames(nuc_mo)[-1]<-paste0("nuc_", colnames(nuc_mo)[-1])
+
+df<-merge(edv_mo, nuc_mo, by="ensembl_id")
+
+dir.create("figure", showWarnings=F)
+df<-na.omit(df)
+
+##ver1
+#target<- ifelse (df$edv_padj < 0.05, 1, ifelse (df$nuc_padj<0.05, 1, 0)) 
+##ver2
+target<- ifelse ( (df$edv_padj < 0.05 & df$nuc_padj<0.05), 1, 0)
+
+df2<-df[target==1,]
+
+dim(df2)
+##1128 genes ver2
+
+library(ggplot2)
+g<-ggplot(df2, aes(x=edv_log2FoldChange, y=nuc_log2FoldChange))
+g<-g +  theme_set(theme_classic(base_family = "Helvetica", base_size=20))
+g<-g + geom_point()
+g<-g + geom_vline(xintercept=0)
+g<-g + geom_hline(yintercept=0)
+ggsave(plot=g, "figure/logFC_comp_monocyte_nuc_vs_edv_geneLevel.pdf", width=8, height=8)
+
+write.table(df2[,c(1,2,4,7,11,14)], "figure/logFC_comp_monocyte_nuc_vs_edv_geneLevel.txt", row.names=F, sep="\t", quote=F)
+
+##macrophage
+edv_mo<-read.table("data/NTD_None_D7_macrophage-vs-EDV_AAVS1_D7_macrophage.txt", header=T, stringsAsFactor=F)
+nuc_mo<-read.table("data/NTD_None_D7_macrophage-vs-Nuc_AAVS1_D7_macrophage.txt", header=T, stringsAsFactor=F)
+
+colnames(edv_mo)[-1]<-paste0("edv_", colnames(edv_mo)[-1])
+colnames(nuc_mo)[-1]<-paste0("nuc_", colnames(nuc_mo)[-1])
+
+df<-merge(edv_mo, nuc_mo, by="ensembl_id")
+
+dir.create("figure", showWarnings=F)
+df<-na.omit(df)
+
+##ver1
+#target<- ifelse (df$edv_padj < 0.05, 1, ifelse (df$nuc_padj<0.05, 1, 0)) 
+##ver2
+target<- ifelse ( (df$edv_padj < 0.05 & df$nuc_padj<0.05), 1, 0)
+
+df2<-df[target==1,]
+
+dim(df2)
+##436 genes ver2
+
+library(ggplot2)
+g<-ggplot(df2, aes(x=edv_log2FoldChange, y=nuc_log2FoldChange))
+g<-g +  theme_set(theme_classic(base_family = "Helvetica", base_size=20))
+g<-g + geom_point()
+g<-g + geom_vline(xintercept=0)
+g<-g + geom_hline(yintercept=0)
+ggsave(plot=g, "figure/logFC_comp_macrophage_nuc_vs_edv_geneLevel.pdf", width=8, height=8)
+
+write.table(df2[,c(1,2,4,7,11,14)], "figure/logFC_comp_macrophage_nuc_vs_edv_geneLevel.txt", row.names=F, sep="\t", quote=F)
+
+##
+
