@@ -18,7 +18,7 @@ The preprocessing workflow includes:
 .
 ├── 1_preprocessing/
 │   ├── preprocess_macs.py
-│   ├── [preprocess.py](https://github.com/mangochiral/PerturbSeq_Analysis_pipeline) #importing modules 
+│   │   ├── [preprocess.py](https://github.com/mangochiral/Macs_KO_plots/blob/main/perturb_seq/1_preprocessing/preprocess.py) #importing modules 
 │   ├── basic_preprocessing.py       # for parallel run
 ```
 
