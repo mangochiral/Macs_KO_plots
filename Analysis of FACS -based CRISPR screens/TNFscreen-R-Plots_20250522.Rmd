@@ -1,0 +1,298 @@
+---
+title: "TNF Screen Analysis"
+author: "pdevant"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.width = 7,
+  fig.height = 6,
+  fig.align = "center"
+)
+
+library(ggplot2)
+library(ggrepel)
+library(dplyr)
+library(grid)
+library(patchwork)
+```
+
+## Read and Merge Gene Summary Files
+
+This section reads the donor 1 and donor 2 MAGeCK gene summary outputs and merges them by gene `id`.
+
+```{r read-and-merge}
+df_D1 <- read.csv("/Users/pdevant/results_TNF2/D1_hi_vs_low_2025-05-23.gene_summary.csv", header = TRUE)
+
+df_D2 <- read.csv("/Users/pdevant/results_TNF2/D2_hi_vs_low_2025-05-23.gene_summary.csv", header = TRUE)
+
+merged_df <- merge(
+  df_D1,
+  df_D2,
+  by = "id",
+  suffixes = c("_D1", "_D2")
+)
+```
+
+## Read Paired Analysis
+
+This section loads the paired analysis used for the paired FDR values and the paired volcano plot.
+
+```{r read-paired}
+df_D12_TNF <- read.csv("/Users/pdevant/results_TNF_paired_perm100000/Paired_hi_vs_low_2026-02-15.gene_summary.csv", header = TRUE)
+
+## Calculate z-scores using scale function
+
+# Run scale() on neg.lfc and add as new column
+df_D12_TNF$z_score <- as.numeric(scale(df_D12_TNF$`neg.lfc`))
+
+## Add FDR column
+df_D12_TNF$FDR <- ifelse(df_D12_TNF$pos.lfc > 0, df_D12_TNF$pos.fdr, df_D12_TNF$neg.fdr)
+
+## Add extra columns that stored -log10 of FDRs (positive and negative)
+df_D12_TNF$neglog10_FDR <- -log10(df_D12_TNF$FDR)
+```
+
+## Replot donor-donor correlation plot, but use z-scores and color by paired FDR
+
+Here, donor 1 and donor 2 are z-scored independently, then paired FDR values from the paired analysis are added to the merged donor table.
+
+```{r donor-correlation-z}
+merged_df$z_score_D1 <- as.numeric(scale(merged_df$pos.lfc_D1))
+merged_df$z_score_D2 <- as.numeric(scale(merged_df$pos.lfc_D2))
+
+merged_df <- merged_df %>%
+  left_join(
+    df_D12_TNF %>% select(id, FDR),
+    by = "id"
+  ) %>%
+  rename(FDR_paired = FDR)
+
+merged_df$group <- with(merged_df, ifelse(
+  z_score_D1 > 3 & z_score_D2 > 3, "GroupA",
+  ifelse(z_score_D1 < -3 & z_score_D2 < -3, "GroupB", "Other")
+))
+
+label_df <- subset(merged_df, group %in% c("GroupA", "GroupB"))
+
+x_limits <- range(merged_df$z_score_D1, na.rm = TRUE)
+y_limits <- range(merged_df$z_score_D2, na.rm = TRUE)
+
+x_pad <- diff(x_limits) * 0.05
+y_pad <- diff(y_limits) * 0.05
+
+if (!is.finite(x_pad) || x_pad == 0) x_pad <- 0.5
+if (!is.finite(y_pad) || y_pad == 0) y_pad <- 0.5
+```
+
+```{r donor-correlation-z-plot}
+set.seed(1)
+
+p3_z_fig <- ggplot(merged_df,
+                   aes(x = z_score_D1,
+                       y = z_score_D2,
+                       color = FDR_paired)) +
+  geom_point(size = 2, alpha = 0.55) +
+  scale_color_viridis_c(
+    option = "D",
+    direction = 1,
+    name = "Paired FDR",
+    limits = c(0, 1),
+    oob = scales::squish,
+    guide = guide_colorbar(
+      barheight = unit(35, "mm"),
+      barwidth  = unit(5, "mm"),
+      ticks.colour = "black",
+      frame.colour = "black"
+    )
+  ) +
+  scale_x_continuous(limits = c(x_limits[1] - x_pad, x_limits[2] + x_pad)) +
+  scale_y_continuous(limits = c(y_limits[1] - y_pad, y_limits[2] + y_pad)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black", linewidth = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black", linewidth = 0.6) +
+  geom_text_repel(
+    data = label_df,
+    aes(label = id),
+    seed = 1,
+    size = 3,
+    fontface = "italic",
+    box.padding   = 0.6,
+    point.padding = 0.7,
+    force         = 10,
+    force_pull    = 2,
+    max.overlaps  = Inf,
+    max.iter      = 50000,
+    max.time      = 5,
+    min.segment.length = 0,
+    segment.color = "gray35",
+    segment.size  = 0.35,
+    segment.alpha = 0.9
+  ) +
+  coord_fixed(ratio = 1, clip = "off") +
+  labs(
+    title = "Donor-Donor correlation (z-scores)",
+    x = "z-score (Donor 1)",
+    y = "z-score (Donor 2)"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title = element_text(size = 12),
+    axis.text  = element_text(size = 11, color = "black"),
+    legend.title = element_text(size = 12),
+    legend.text  = element_text(size = 11),
+    legend.position = "right",
+    plot.margin = margin(10, 25, 10, 10)
+  )
+
+print(p3_z_fig)
+```
+
+## Plotting of Volcano plot D1 and D2 paired analysis
+
+This section reproduces the paired volcano plot using z-scores, an FDR cutoff of 0.25, and separate color bins for z-scores between 1 and 3 versus greater than 3. The split x-axis is used to show the far-left outlier region together with the main distribution.
+
+```{r volcano-z-bins}
+# Thresholds
+FDR_threshold <- 0.25
+z_lo <- 1
+z_hi <- 3
+
+# Define 4 color bins (only if FDR passes)
+df_D12_TNF$ColorGroup <- with(df_D12_TNF, ifelse(
+  FDR < FDR_threshold & z_score >= z_hi, "Up_hi",
+  ifelse(FDR < FDR_threshold & z_score >= z_lo & z_score < z_hi, "Up_lo",
+         ifelse(FDR < FDR_threshold & z_score <= -z_hi, "Down_hi",
+                ifelse(FDR < FDR_threshold & z_score <= -z_lo & z_score > -z_hi, "Down_lo",
+                       "Neutral")
+         )
+  )
+))
+
+# Label genes that pass FDR AND |z| >= 1
+label_df <- df_D12_TNF %>%
+  filter(FDR < FDR_threshold, abs(z_score) >= z_lo)
+
+# Volcano with a true x-axis break (two panels) + consistent x-scale + FDR label
+x_left <- c(-16, -14.5)
+x_main <- c(-8, 8)
+
+y_fdr <- -log10(FDR_threshold)
+
+df_left <- df_D12_TNF %>%
+  filter(z_score >= x_left[1], z_score <= x_left[2])
+
+df_main <- df_D12_TNF %>%
+  filter(z_score >= x_main[1], z_score <= x_main[2])
+
+label_left <- label_df %>%
+  filter(z_score >= x_left[1], z_score <= x_left[2])
+
+if ("TNF" %in% label_left$id) {
+  label_left <- label_left %>% filter(id == "TNF")
+} else if (nrow(label_left) > 0) {
+  label_left <- label_left %>% slice_max(order_by = abs(z_score), n = 1)
+}
+
+label_main <- label_df %>%
+  filter(z_score >= x_main[1], z_score <= x_main[2])
+
+y_top <- max(df_D12_TNF$neglog10_FDR, na.rm = TRUE) + 0.7
+
+col_scale <- scale_color_manual(values = c(
+  "Down_hi" = "#08519C",
+  "Down_lo" = "#9ECAE1",
+  "Neutral" = "gray80",
+  "Up_lo"   = "#FCBBA1",
+  "Up_hi"   = "#CB181D"
+))
+
+base_theme <- theme_classic(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  )
+
+left_breaks <- c(-15)
+
+main_breaks <- c(pretty(x_main), -8, 8, -z_hi, -z_lo, 0, z_lo, z_hi)
+
+x_fdr_label <- x_main[1] + 0.2
+```
+
+```{r volcano-z-bins-plot}
+p_left <- ggplot(df_left, aes(x = z_score, y = neglog10_FDR)) +
+  geom_point(aes(color = ColorGroup), alpha = 0.8, size = 2) +
+  col_scale +
+  geom_hline(yintercept = y_fdr, linetype = "dashed", color = "grey60") +
+  geom_text_repel(
+    data = label_left,
+    aes(label = id),
+    size = 3,
+    box.padding = 0.4,
+    point.padding = 0.2,
+    force = 3,
+    max.overlaps = Inf,
+    segment.color = "grey60",
+    segment.size = 0.3
+  ) +
+  coord_cartesian(ylim = c(0, y_top), clip = "off") +
+  scale_x_continuous(breaks = left_breaks, limits = x_left) +
+  labs(x = NULL, y = "-Log10(FDR)") +
+  base_theme
+
+p_main <- ggplot(df_main, aes(x = z_score, y = neglog10_FDR)) +
+  geom_point(aes(color = ColorGroup), alpha = 0.8, size = 2) +
+  col_scale +
+  geom_vline(
+    xintercept = c(-z_hi, -z_lo, z_lo, z_hi),
+    linetype = "dashed",
+    color = "grey60"
+  ) +
+  geom_hline(yintercept = y_fdr, linetype = "dashed", color = "grey60") +
+  annotate(
+    "text",
+    x = x_fdr_label,
+    y = y_fdr,
+    label = paste0("FDR = ", FDR_threshold),
+    hjust = 0,
+    vjust = -0.6,
+    size = 3,
+    color = "grey40"
+  ) +
+  geom_text_repel(
+    data = label_main,
+    aes(label = id),
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    force = 3,
+    max.overlaps = 50,
+    segment.color = "grey60",
+    segment.size = 0.3
+  ) +
+  coord_cartesian(ylim = c(0, y_top), clip = "off") +
+  scale_x_continuous(breaks = main_breaks, limits = x_main) +
+  labs(x = "LFC z-score", y = NULL) +
+  base_theme +
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y  = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.y  = element_blank()
+  )
+
+left_span <- diff(x_left)
+main_span <- diff(x_main)
+
+zVolcanoTNF <- p_left + p_main +
+  plot_layout(widths = c(left_span, main_span))
+
+print(zVolcanoTNF)
+```
