@@ -18,9 +18,11 @@ The preprocessing workflow includes:
 .
 ├── 1_preprocessing/
 │   ├── preprocess_macs.py
-│   │   ├── [preprocess.py](https://github.com/mangochiral/Macs_KO_plots/blob/main/perturb_seq/1_preprocessing/preprocess.py) #importing modules 
+│   ├── preprocess.py                # importing modules
 │   ├── basic_preprocessing.py       # for parallel run
 ```
+
+> [`preprocess.py`](https://github.com/mangochiral/PerturbSeq_Analysis_pipeline) is sourced from the PerturbSeq Analysis Pipeline repository.
 
 ## Input Data
 The experiment_info.csv has sample info about condition, lane, donor, treatment, etc
