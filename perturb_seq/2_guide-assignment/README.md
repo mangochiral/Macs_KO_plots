@@ -74,9 +74,3 @@ Quantifies guide-level and cell-level knockdown efficiency with statistical test
 - Generates scatter plots of guide effect size vs. rank, cell-level knockdown fraction, and binned knockdown efficiency curves.
 
 **Key outputs:** Guide efficiency CSVs (`Macs_Ctrl_cell_level_guide_efficiency.csv`, `Macs_LPS_cell_level_guide_efficiency.csv`), scatter plots, and rank-binned efficiency figures.
-
-## Usage
-
-1. Update the `path_macs` / `lane_path` variables at the top of each notebook to point to your local project directory.
-2. Run the notebooks in order (1 → 2 → 3) or independently — they share the same input data but do not depend on each other's outputs.
-3. Plots are saved to `plots/` and QC tables to `qc_stats/` within the project directory.
